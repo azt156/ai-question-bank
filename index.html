@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>AI 題庫分類管家</title>
 
@@ -23,7 +26,7 @@ header{
 
 header h1{
     margin:0;
-    font-size:28px;
+    font-size:32px;
 }
 
 .container{
@@ -59,7 +62,7 @@ select{
 }
 
 textarea{
-    min-height:150px;
+    min-height:180px;
     resize:vertical;
 }
 
@@ -106,6 +109,16 @@ button{
     font-size:14px;
 }
 
+.success{
+    color:#15803d;
+    font-weight:bold;
+}
+
+.error{
+    color:#dc2626;
+    font-weight:bold;
+}
+
 @media(max-width:900px){
 
     .grid{
@@ -115,12 +128,15 @@ button{
 }
 
 </style>
+
 </head>
 
 <body>
 
 <header>
-    <h1>AI 題庫分類管家</h1>
+
+<h1>AI 題庫分類管家</h1>
+
 </header>
 
 <div class="container">
@@ -129,40 +145,70 @@ button{
 
 <div class="card">
 
+<!-- GAS URL 已寫死 -->
+
+<input
+type="hidden"
+id="gasUrl"
+value="https://script.google.com/macros/s/AKfycbzB3Rfk0jueY6Y8IVrgjnbYvw1lph7XTm9yeYS3P9Oc53wVC_HQrkjuxcVZ0KrmZo4eug/exec"
+>
+
 <h2>系統設定</h2>
-
-<label>GAS Web App URL</label>
-
-<input id="gasUrl" placeholder="https://script.google.com/macros/s/AKfycbzB3Rfk0jueY6Y8IVrgjnbYvw1lph7XTm9yeYS3P9Oc53wVC_HQrkjuxcVZ0KrmZo4eug/exec">
 
 <label>老師名稱</label>
 
-<input id="teacherName" placeholder="例如：Leona 老師">
+<input
+id="teacherName"
+placeholder="例如：Leona 老師"
+>
 
 <label>科目提示</label>
 
 <select id="subjectHint">
-    <option>國中自然</option>
-    <option>國中生物</option>
-    <option>國中理化</option>
-    <option>國中地球科學</option>
+
+<option>國中自然</option>
+
+<option>國中生物</option>
+
+<option>國中理化</option>
+
+<option>國中地球科學</option>
+
 </select>
 
 <h2>匯入考題</h2>
 
-<input type="file" id="fileInput" accept="image/*" capture="environment">
+<input
+type="file"
+id="fileInput"
+accept="image/*"
+capture="environment"
+>
 
-<textarea id="questionText" placeholder="也可以直接貼上題目文字"></textarea>
+<textarea
+id="questionText"
+placeholder="也可以直接貼上題目文字"
+></textarea>
 
-<button class="primary" onclick="analyzeQuestion()">
+<button
+class="primary"
+onclick="analyzeQuestion()"
+>
 AI 分析並匯入
 </button>
 
-<button class="secondary" onclick="testConnection()" style="margin-top:10px;">
+<button
+class="secondary"
+onclick="testConnection()"
+style="margin-top:10px;"
+>
 測試後端連線
 </button>
 
-<div class="preview" id="preview"></div>
+<div
+class="preview"
+id="preview"
+></div>
 
 </div>
 
@@ -172,7 +218,10 @@ AI 分析並匯入
 
 <div id="tags"></div>
 
-<div class="result" id="resultBox">
+<div
+class="result"
+id="resultBox"
+>
 尚未分析
 </div>
 
@@ -185,11 +234,13 @@ AI 分析並匯入
 <script>
 
 let base64Image = "";
+
 let currentFile = null;
 
-const fileInput = document.getElementById("fileInput");
+const fileInput =
+    document.getElementById("fileInput");
 
-fileInput.addEventListener("change", async (e)=>{
+fileInput.addEventListener("change",(e)=>{
 
     const file = e.target.files[0];
 
@@ -201,7 +252,8 @@ fileInput.addEventListener("change", async (e)=>{
 
     reader.onload = function(event){
 
-        base64Image = event.target.result.split(",")[1];
+        base64Image =
+            event.target.result.split(",")[1];
 
         document.getElementById("preview").innerHTML = `
             <img src="${event.target.result}">
@@ -214,12 +266,8 @@ fileInput.addEventListener("change", async (e)=>{
 
 async function testConnection(){
 
-    const gasUrl = document.getElementById("gasUrl").value.trim();
-
-    if(!gasUrl){
-        alert("請輸入 GAS URL");
-        return;
-    }
+    const gasUrl =
+        document.getElementById("gasUrl").value.trim();
 
     try{
 
@@ -232,16 +280,25 @@ async function testConnection(){
 
         const data = await response.json();
 
-        document.getElementById("resultBox").innerText =
-            JSON.stringify(data,null,2);
+        document.getElementById("resultBox").innerHTML =
+`
+<div class="success">
+後端連線成功
+</div>
 
-        alert("後端連線成功");
+${JSON.stringify(data,null,2)}
+`;
 
     }catch(err){
 
-        alert("連線失敗");
-
         console.error(err);
+
+        document.getElementById("resultBox").innerHTML =
+`
+<div class="error">
+後端連線失敗
+</div>
+`;
 
     }
 
@@ -251,11 +308,6 @@ async function analyzeQuestion(){
 
     const gasUrl =
         document.getElementById("gasUrl").value.trim();
-
-    if(!gasUrl){
-        alert("請輸入 GAS URL");
-        return;
-    }
 
     const questionText =
         document.getElementById("questionText").value;
@@ -294,8 +346,12 @@ async function analyzeQuestion(){
 
         if(!data.ok){
 
-            document.getElementById("resultBox").innerText =
-                data.error;
+            document.getElementById("resultBox").innerHTML =
+`
+<div class="error">
+${data.error}
+</div>
+`;
 
             return;
         }
@@ -352,8 +408,12 @@ ${data.sheetUrl}
 
         console.error(err);
 
-        document.getElementById("resultBox").innerText =
-            "發生錯誤";
+        document.getElementById("resultBox").innerHTML =
+`
+<div class="error">
+發生錯誤
+</div>
+`;
 
     }
 
@@ -362,4 +422,5 @@ ${data.sheetUrl}
 </script>
 
 </body>
+
 </html>
