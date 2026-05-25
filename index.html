@@ -119,6 +119,47 @@ button{
     font-weight:bold;
 }
 
+.notice{
+    background:#eff6ff;
+    color:#1e40af;
+    padding:12px 14px;
+    border-radius:12px;
+    line-height:1.7;
+    font-size:14px;
+    margin-bottom:16px;
+}
+
+.paste-box{
+    border:2px dashed #93c5fd;
+    background:#f8fbff;
+    color:#1e3a8a;
+    border-radius:16px;
+    padding:16px;
+    text-align:center;
+    line-height:1.7;
+    margin-bottom:16px;
+    cursor:pointer;
+}
+
+.paste-box strong{
+    display:block;
+    font-size:16px;
+    margin-bottom:4px;
+}
+
+.paste-box.active{
+    background:#dbeafe;
+    border-color:#2563eb;
+}
+
+.small-text{
+    font-size:13px;
+    color:#666;
+    line-height:1.6;
+    margin-top:-8px;
+    margin-bottom:16px;
+}
+
 @media(max-width:900px){
 
     .grid{
@@ -178,12 +219,35 @@ placeholder="例如：Leona 老師"
 
 <h2>匯入考題</h2>
 
+<div class="notice">
+你可以使用三種方式匯入題目：直接貼上題目文字、上傳圖片檔，或截圖後直接貼上。
+</div>
+
+<div
+class="paste-box"
+id="pasteBox"
+tabindex="0"
+>
+<strong>新增功能：截圖後直接貼上</strong>
+Mac：Command + Control + Shift + 4 截圖後，按 Command + V<br>
+Windows：Win + Shift + S 截圖後，按 Ctrl + V<br>
+不用另存圖片檔，貼上後會自動出現在下方預覽區。
+</div>
+
+<label>上傳題目圖片</label>
+
 <input
 type="file"
 id="fileInput"
 accept="image/*"
 capture="environment"
 >
+
+<p class="small-text">
+也可以不用上傳檔案，直接截圖後貼到這個頁面。
+</p>
+
+<label>貼上題目文字</label>
 
 <textarea
 id="questionText"
@@ -240,11 +304,67 @@ let currentFile = null;
 const fileInput =
     document.getElementById("fileInput");
 
+const pasteBox =
+    document.getElementById("pasteBox");
+
 fileInput.addEventListener("change",(e)=>{
 
     const file = e.target.files[0];
 
     if(!file) return;
+
+    handleImageFile(file,"upload");
+
+});
+
+pasteBox.addEventListener("click",()=>{
+
+    pasteBox.focus();
+
+    document.getElementById("resultBox").innerText =
+        "請先截圖，然後按 Ctrl+V 或 Command+V 貼上截圖。";
+
+});
+
+pasteBox.addEventListener("focus",()=>{
+
+    pasteBox.classList.add("active");
+
+});
+
+pasteBox.addEventListener("blur",()=>{
+
+    pasteBox.classList.remove("active");
+
+});
+
+document.addEventListener("paste",(event)=>{
+
+    const clipboardItems = event.clipboardData.items;
+
+    if(!clipboardItems) return;
+
+    for(const item of clipboardItems){
+
+        if(item.type.indexOf("image") !== -1){
+
+            const file = item.getAsFile();
+
+            if(!file) return;
+
+            handleImageFile(file,"paste");
+
+            event.preventDefault();
+
+            return;
+
+        }
+
+    }
+
+});
+
+function handleImageFile(file,source){
 
     currentFile = file;
 
@@ -255,14 +375,33 @@ fileInput.addEventListener("change",(e)=>{
         base64Image =
             event.target.result.split(",")[1];
 
+        let sourceText = "";
+
+        if(source === "paste"){
+
+            sourceText = "已成功貼上截圖，可以按「AI 分析並匯入」。";
+
+        }else{
+
+            sourceText = "已成功上傳圖片，可以按「AI 分析並匯入」。";
+
+        }
+
         document.getElementById("preview").innerHTML = `
             <img src="${event.target.result}">
+            <p class="success">
+                ${sourceText}
+            </p>
         `;
+
+        document.getElementById("resultBox").innerText =
+            sourceText;
+
     };
 
     reader.readAsDataURL(file);
 
-});
+}
 
 async function testConnection(){
 
@@ -312,6 +451,19 @@ async function analyzeQuestion(){
     const questionText =
         document.getElementById("questionText").value;
 
+    if(!questionText.trim() && !currentFile){
+
+        document.getElementById("resultBox").innerHTML =
+`
+<div class="error">
+請先貼上題目文字、上傳圖片，或截圖後直接貼上。
+</div>
+`;
+
+        return;
+
+    }
+
     document.getElementById("resultBox").innerText =
         "AI 分析中...";
 
@@ -330,8 +482,8 @@ async function analyzeQuestion(){
             text:questionText,
 
             file: currentFile ? {
-                name: currentFile.name,
-                mimeType: currentFile.type,
+                name: currentFile.name || "pasted-screenshot.png",
+                mimeType: currentFile.type || "image/png",
                 base64: base64Image
             } : null
 
@@ -411,7 +563,7 @@ ${data.sheetUrl}
         document.getElementById("resultBox").innerHTML =
 `
 <div class="error">
-發生錯誤
+發生錯誤，請確認後端是否正常，或重新貼上截圖再試一次。
 </div>
 `;
 
