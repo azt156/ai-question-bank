@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>AI 題庫分類管家</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family:"Microsoft JhengHei",sans-serif;
+    background:#f5f7fb;
+    color:#222;
+}
+
+header{
+    background:white;
+    padding:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.05);
+}
+
+header h1{
+    margin:0;
+    font-size:28px;
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+    padding:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:350px 1fr;
+    gap:20px;
+}
+
+.card{
+    background:white;
+    border-radius:20px;
+    padding:20px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.05);
+}
+
+input,
+textarea,
+select{
+    width:100%;
+    padding:14px;
+    margin-top:8px;
+    margin-bottom:16px;
+    border-radius:12px;
+    border:1px solid #ddd;
+    box-sizing:border-box;
+    font-size:16px;
+}
+
+textarea{
+    min-height:150px;
+    resize:vertical;
+}
+
+button{
+    border:none;
+    padding:14px 18px;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:16px;
+    font-weight:bold;
+}
+
+.primary{
+    background:#2563eb;
+    color:white;
+}
+
+.secondary{
+    background:#f3f4f6;
+}
+
+.preview img{
+    width:100%;
+    border-radius:12px;
+    margin-top:10px;
+}
+
+.result{
+    white-space:pre-wrap;
+    line-height:1.8;
+    background:#f9fafb;
+    padding:16px;
+    border-radius:12px;
+    min-height:300px;
+}
+
+.tag{
+    display:inline-block;
+    background:#dbeafe;
+    color:#1d4ed8;
+    padding:6px 12px;
+    border-radius:999px;
+    margin:4px;
+    font-size:14px;
+}
+
+@media(max-width:900px){
+
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>AI 題庫分類管家</h1>
+</header>
+
+<div class="container">
+
+<div class="grid">
+
+<div class="card">
+
+<h2>系統設定</h2>
+
+<label>GAS Web App URL</label>
+
+<input id="gasUrl" placeholder="貼上你的 GAS Web App URL">
+
+<label>老師名稱</label>
+
+<input id="teacherName" placeholder="例如：Leona 老師">
+
+<label>科目提示</label>
+
+<select id="subjectHint">
+    <option>國中自然</option>
+    <option>國中生物</option>
+    <option>國中理化</option>
+    <option>國中地球科學</option>
+</select>
+
+<h2>匯入考題</h2>
+
+<input type="file" id="fileInput" accept="image/*" capture="environment">
+
+<textarea id="questionText" placeholder="也可以直接貼上題目文字"></textarea>
+
+<button class="primary" onclick="analyzeQuestion()">
+AI 分析並匯入
+</button>
+
+<button class="secondary" onclick="testConnection()" style="margin-top:10px;">
+測試後端連線
+</button>
+
+<div class="preview" id="preview"></div>
+
+</div>
+
+<div class="card">
+
+<h2>AI 分類結果</h2>
+
+<div id="tags"></div>
+
+<div class="result" id="resultBox">
+尚未分析
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let base64Image = "";
+let currentFile = null;
+
+const fileInput = document.getElementById("fileInput");
+
+fileInput.addEventListener("change", async (e)=>{
+
+    const file = e.target.files[0];
+
+    if(!file) return;
+
+    currentFile = file;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event){
+
+        base64Image = event.target.result.split(",")[1];
+
+        document.getElementById("preview").innerHTML = `
+            <img src="${event.target.result}">
+        `;
+    };
+
+    reader.readAsDataURL(file);
+
+});
+
+async function testConnection(){
+
+    const gasUrl = document.getElementById("gasUrl").value.trim();
+
+    if(!gasUrl){
+        alert("請輸入 GAS URL");
+        return;
+    }
+
+    try{
+
+        const response = await fetch(gasUrl,{
+            method:"POST",
+            body:JSON.stringify({
+                action:"ping"
+            })
+        });
+
+        const data = await response.json();
+
+        document.getElementById("resultBox").innerText =
+            JSON.stringify(data,null,2);
+
+        alert("後端連線成功");
+
+    }catch(err){
+
+        alert("連線失敗");
+
+        console.error(err);
+
+    }
+
+}
+
+async function analyzeQuestion(){
+
+    const gasUrl =
+        document.getElementById("gasUrl").value.trim();
+
+    if(!gasUrl){
+        alert("請輸入 GAS URL");
+        return;
+    }
+
+    const questionText =
+        document.getElementById("questionText").value;
+
+    document.getElementById("resultBox").innerText =
+        "AI 分析中...";
+
+    try{
+
+        const payload = {
+
+            action:"analyzeQuestion",
+
+            teacherName:
+                document.getElementById("teacherName").value,
+
+            subjectHint:
+                document.getElementById("subjectHint").value,
+
+            text:questionText,
+
+            file: currentFile ? {
+                name: currentFile.name,
+                mimeType: currentFile.type,
+                base64: base64Image
+            } : null
+
+        };
+
+        const response = await fetch(gasUrl,{
+            method:"POST",
+            body:JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if(!data.ok){
+
+            document.getElementById("resultBox").innerText =
+                data.error;
+
+            return;
+        }
+
+        const item = data.item;
+
+        document.getElementById("tags").innerHTML = `
+            <span class="tag">${item.grade}</span>
+            <span class="tag">${item.subject}</span>
+            <span class="tag">${item.chapter}</span>
+            <span class="tag">${item.knowledge_point}</span>
+            <span class="tag">${item.question_type}</span>
+            <span class="tag">${item.difficulty}</span>
+        `;
+
+        document.getElementById("resultBox").innerText =
+
+`題目：
+
+${item.question_text}
+
+
+答案：
+
+${item.answer}
+
+
+詳解：
+
+${item.explanation}
+
+
+分類理由：
+
+${item.reason}
+
+
+Google Docs：
+
+${data.docUrl}
+
+
+Google Drive：
+
+${data.folderUrl}
+
+
+Google Sheets：
+
+${data.sheetUrl}
+`;
+
+    }catch(err){
+
+        console.error(err);
+
+        document.getElementById("resultBox").innerText =
+            "發生錯誤";
+
+    }
+
+}
+
+</script>
+
+</body>
+</html>
